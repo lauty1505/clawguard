@@ -1,6 +1,6 @@
 /**
  * ClawGuard Risk Analyzer
- * Comprehensive security analysis for OpenClaw/Clawdbot activity
+ * Comprehensive security analysis for OpenClaw activity
  */
 
 /**
