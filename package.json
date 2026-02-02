@@ -32,12 +32,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jaydenbeard/clawguard.git"
+    "url": "git+https://github.com/JaydenBeard/clawguard.git"
   },
   "bugs": {
-    "url": "https://github.com/jaydenbeard/clawguard/issues"
+    "url": "https://github.com/JaydenBeard/clawguard/issues"
   },
-  "homepage": "https://github.com/jaydenbeard/clawguard#readme",
+  "homepage": "https://github.com/JaydenBeard/clawguard#readme",
   "author": "Jayden Beard",
   "license": "MIT"
 }

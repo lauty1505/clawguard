@@ -2,7 +2,7 @@
 
 🛡️ Activity monitor and security dashboard for [Clawdbot](https://github.com/clawdbot/clawdbot). See exactly what your AI agent has done, with real-time analytics and emergency kill switch.
 
-![ClawGuard Dashboard](https://raw.githubusercontent.com/jaydenbeard/clawguard/main/docs/screenshot.png)
+![ClawGuard Dashboard](https://raw.githubusercontent.com/JaydenBeard/clawguard/main/docs/screenshot.png)
 
 ## Quick Install
 
@@ -12,7 +12,7 @@ npm install -g clawguard
 clawguard start
 
 # Or clone manually
-git clone https://github.com/jaydenbeard/clawguard.git
+git clone https://github.com/JaydenBeard/clawguard.git
 cd clawguard && npm install && npm start
 ```
 
