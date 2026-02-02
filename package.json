@@ -1,7 +1,7 @@
 {
   "name": "clawguard",
   "version": "0.3.0",
-  "description": "Activity monitor and security dashboard for Clawdbot/OpenClaw - real-time analytics, risk analysis, and kill switch",
+  "description": "Activity monitor and security dashboard for OpenClaw/OpenClaw - real-time analytics, risk analysis, and kill switch",
   "type": "module",
   "main": "src/server.js",
   "bin": {

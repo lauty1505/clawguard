@@ -1,6 +1,6 @@
 # ClawGuard
 
-🛡️ Activity monitor and security dashboard for [Clawdbot](https://github.com/clawdbot/clawdbot). See exactly what your AI agent has done, with real-time analytics and emergency kill switch.
+🛡️ Activity monitor and security dashboard for [OpenClaw](https://github.com/clawdbot/clawdbot). See exactly what your AI agent has done, with real-time analytics and emergency kill switch.
 
 ![ClawGuard Dashboard](https://raw.githubusercontent.com/JaydenBeard/clawguard/main/docs/screenshot.png)
 
