@@ -106,9 +106,9 @@ async function flushStreamBuffer() {
   }
 }
 
-// Process new log entries for streaming
+// Process new log entries for streaming and alerts
 function processNewLogEntries(filePath) {
-  if (!streamingConfig.enabled) return;
+  if (!streamingConfig.enabled && !alertConfig.enabled) return;
   
   try {
     const content = readFileSync(filePath, 'utf-8');
@@ -129,20 +129,34 @@ function processNewLogEntries(filePath) {
           for (const item of entry.message.content) {
             // Tool calls
             if (item.type === 'toolCall') {
-              const toolEntry = {
-                type: 'tool_call',
-                tool: item.name,
-                id: item.id,
-                arguments: item.arguments,
-                timestamp: entry.timestamp,
-                _risk: analyzeRisk({ tool: item.name, arguments: item.arguments }),
-                _streamedAt: new Date().toISOString(),
-                _sessionFile: filePath.split('/').pop(),
-              };
-              streamBuffer.push(toolEntry);
+              const risk = analyzeRisk({ tool: item.name, arguments: item.arguments });
+              
+              // 1. Send alert if enabled
+              if (alertConfig.enabled) {
+                sendAlert({
+                  tool: item.name,
+                  arguments: item.arguments,
+                  timestamp: entry.timestamp
+                }, risk);
+              }
+
+              // 2. Add to stream buffer if streaming enabled
+              if (streamingConfig.enabled) {
+                const toolEntry = {
+                  type: 'tool_call',
+                  tool: item.name,
+                  id: item.id,
+                  arguments: item.arguments,
+                  timestamp: entry.timestamp,
+                  _risk: risk,
+                  _streamedAt: new Date().toISOString(),
+                  _sessionFile: filePath.split('/').pop(),
+                };
+                streamBuffer.push(toolEntry);
+              }
             }
             // Tool results
-            if (item.type === 'toolResult') {
+            if (item.type === 'toolResult' && streamingConfig.enabled) {
               const resultEntry = {
                 type: 'tool_result',
                 tool: item.name,
@@ -163,7 +177,7 @@ function processNewLogEntries(filePath) {
     }
     
     // Flush if batch size reached
-    if (streamBuffer.length >= streamingConfig.batchSize) {
+    if (streamingConfig.enabled && streamBuffer.length >= streamingConfig.batchSize) {
       flushStreamBuffer();
     }
   } catch (error) {
@@ -1486,33 +1500,49 @@ async function sendAlert(activity, risk) {
   if (!alertConfig.enabled || !alertConfig.webhookUrl) return;
   
   // Check if we should alert on this
-  if (alertConfig.alertOnHighRisk && risk.level !== 'high') {
+  if (alertConfig.alertOnHighRisk && risk.level !== 'high' && risk.level !== 'critical') {
     if (!alertConfig.alertOnCategories.includes(categorize(activity.tool))) {
       return;
     }
   }
   
-  const payload = {
-    type: 'activity_alert',
-    timestamp: new Date().toISOString(),
-    activity: {
-      tool: activity.tool,
-      arguments: activity.arguments,
-      timestamp: activity.timestamp,
-    },
-    risk: {
-      level: risk.level,
-      flags: risk.flags,
-    },
-    message: `⚠️ ${risk.level.toUpperCase()} RISK: ${activity.tool} - ${risk.flags.join(', ')}`,
-  };
+  // Check for Telegram
+  const isTelegram = alertConfig.webhookUrl.includes('api.telegram.org');
+  let body;
+  
+  if (isTelegram) {
+    // Telegram requires 'text' field
+    const message = `⚠️ ${risk.level.toUpperCase()} RISK: ${activity.tool}\n\nFlags: ${risk.flags.join(', ')}\nArgs: ${JSON.stringify(activity.arguments).substring(0, 100)}`;
+    body = JSON.stringify({
+      text: message,
+      parse_mode: 'Markdown'
+    });
+  } else {
+    // Standard webhook payload
+    const message = `⚠️ ${risk.level.toUpperCase()} RISK: ${activity.tool} - ${risk.flags.join(', ')}`;
+    body = JSON.stringify({
+      type: 'activity_alert',
+      timestamp: new Date().toISOString(),
+      activity: {
+        tool: activity.tool,
+        arguments: activity.arguments,
+        timestamp: activity.timestamp,
+      },
+      risk: {
+        level: risk.level,
+        flags: risk.flags,
+      },
+      message,
+    });
+  }
   
   try {
     await fetch(alertConfig.webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body,
     });
+    console.log(`🔔 Alert sent for ${activity.tool} (${risk.level})`);
   } catch (error) {
     console.error('Failed to send alert:', error);
   }
