@@ -34,6 +34,7 @@ const config = loadConfig();
 let alertConfig = {
   enabled: config.alerts?.enabled || false,
   webhookUrl: config.alerts?.webhookUrl || null,
+  telegramChatId: config.alerts?.telegramChatId || null,
   alertOnHighRisk: config.alerts?.onRiskLevels?.includes('high') ?? true,
   alertOnCategories: ['shell', 'file'],
   onRiskLevels: config.alerts?.onRiskLevels || ['high', 'critical'],
@@ -106,9 +107,9 @@ async function flushStreamBuffer() {
   }
 }
 
-// Process new log entries for streaming
+// Process new log entries for streaming and alerts
 function processNewLogEntries(filePath) {
-  if (!streamingConfig.enabled) return;
+  if (!streamingConfig.enabled && !alertConfig.enabled) return;
   
   try {
     const content = readFileSync(filePath, 'utf-8');
@@ -129,20 +130,34 @@ function processNewLogEntries(filePath) {
           for (const item of entry.message.content) {
             // Tool calls
             if (item.type === 'toolCall') {
-              const toolEntry = {
-                type: 'tool_call',
-                tool: item.name,
-                id: item.id,
-                arguments: item.arguments,
-                timestamp: entry.timestamp,
-                _risk: analyzeRisk({ tool: item.name, arguments: item.arguments }),
-                _streamedAt: new Date().toISOString(),
-                _sessionFile: filePath.split('/').pop(),
-              };
-              streamBuffer.push(toolEntry);
+              const risk = analyzeRisk({ tool: item.name, arguments: item.arguments });
+              
+              // 1. Send alert if enabled
+              if (alertConfig.enabled) {
+                sendAlert({
+                  tool: item.name,
+                  arguments: item.arguments,
+                  timestamp: entry.timestamp
+                }, risk);
+              }
+
+              // 2. Add to stream buffer if streaming enabled
+              if (streamingConfig.enabled) {
+                const toolEntry = {
+                  type: 'tool_call',
+                  tool: item.name,
+                  id: item.id,
+                  arguments: item.arguments,
+                  timestamp: entry.timestamp,
+                  _risk: risk,
+                  _streamedAt: new Date().toISOString(),
+                  _sessionFile: filePath.split('/').pop(),
+                };
+                streamBuffer.push(toolEntry);
+              }
             }
             // Tool results
-            if (item.type === 'toolResult') {
+            if (item.type === 'toolResult' && streamingConfig.enabled) {
               const resultEntry = {
                 type: 'tool_result',
                 tool: item.name,
@@ -163,7 +178,7 @@ function processNewLogEntries(filePath) {
     }
     
     // Flush if batch size reached
-    if (streamBuffer.length >= streamingConfig.batchSize) {
+    if (streamingConfig.enabled && streamBuffer.length >= streamingConfig.batchSize) {
       flushStreamBuffer();
     }
   } catch (error) {
@@ -461,6 +476,7 @@ app.post('/api/config', (req, res) => {
       config.alerts = { ...config.alerts, ...updates.alerts };
       alertConfig.enabled = updates.alerts.enabled ?? alertConfig.enabled;
       alertConfig.webhookUrl = updates.alerts.webhookUrl ?? alertConfig.webhookUrl;
+      alertConfig.telegramChatId = updates.alerts.telegramChatId ?? alertConfig.telegramChatId;
       alertConfig.onRiskLevels = updates.alerts.onRiskLevels ?? alertConfig.onRiskLevels;
       alertConfig.onSequences = updates.alerts.onSequences ?? alertConfig.onSequences;
     }
@@ -1130,10 +1146,11 @@ app.get('/api/alerts/config', (req, res) => {
  */
 app.post('/api/alerts/config', express.json(), (req, res) => {
   try {
-    const { enabled, webhookUrl, alertOnHighRisk, alertOnCategories } = req.body;
+    const { enabled, webhookUrl, telegramChatId, alertOnHighRisk, alertOnCategories } = req.body;
     
     if (typeof enabled === 'boolean') alertConfig.enabled = enabled;
     if (webhookUrl !== undefined) alertConfig.webhookUrl = webhookUrl;
+    if (telegramChatId !== undefined) alertConfig.telegramChatId = telegramChatId;
     if (typeof alertOnHighRisk === 'boolean') alertConfig.alertOnHighRisk = alertOnHighRisk;
     if (Array.isArray(alertOnCategories)) alertConfig.alertOnCategories = alertOnCategories;
     
@@ -1486,33 +1503,54 @@ async function sendAlert(activity, risk) {
   if (!alertConfig.enabled || !alertConfig.webhookUrl) return;
   
   // Check if we should alert on this
-  if (alertConfig.alertOnHighRisk && risk.level !== 'high') {
+  if (alertConfig.alertOnHighRisk && risk.level !== 'high' && risk.level !== 'critical') {
     if (!alertConfig.alertOnCategories.includes(categorize(activity.tool))) {
       return;
     }
   }
   
-  const payload = {
-    type: 'activity_alert',
-    timestamp: new Date().toISOString(),
-    activity: {
-      tool: activity.tool,
-      arguments: activity.arguments,
-      timestamp: activity.timestamp,
-    },
-    risk: {
-      level: risk.level,
-      flags: risk.flags,
-    },
-    message: `⚠️ ${risk.level.toUpperCase()} RISK: ${activity.tool} - ${risk.flags.join(', ')}`,
-  };
+  // Check for Telegram
+  const isTelegram = alertConfig.webhookUrl.includes('api.telegram.org');
+  let body;
+  
+  if (isTelegram) {
+    // Telegram requires 'chat_id' and 'text' fields
+    if (!alertConfig.telegramChatId) {
+      console.error('Telegram alert skipped: telegramChatId not configured');
+      return;
+    }
+    const message = `⚠️ ${risk.level.toUpperCase()} RISK: ${activity.tool}\n\nFlags: ${risk.flags.join(', ')}\nArgs: ${JSON.stringify(activity.arguments).substring(0, 100)}`;
+    body = JSON.stringify({
+      chat_id: alertConfig.telegramChatId,
+      text: message,
+      parse_mode: 'Markdown'
+    });
+  } else {
+    // Standard webhook payload
+    const message = `⚠️ ${risk.level.toUpperCase()} RISK: ${activity.tool} - ${risk.flags.join(', ')}`;
+    body = JSON.stringify({
+      type: 'activity_alert',
+      timestamp: new Date().toISOString(),
+      activity: {
+        tool: activity.tool,
+        arguments: activity.arguments,
+        timestamp: activity.timestamp,
+      },
+      risk: {
+        level: risk.level,
+        flags: risk.flags,
+      },
+      message,
+    });
+  }
   
   try {
     await fetch(alertConfig.webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body,
     });
+    console.log(`🔔 Alert sent for ${activity.tool} (${risk.level})`);
   } catch (error) {
     console.error('Failed to send alert:', error);
   }
