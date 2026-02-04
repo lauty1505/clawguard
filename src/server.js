@@ -34,6 +34,7 @@ const config = loadConfig();
 let alertConfig = {
   enabled: config.alerts?.enabled || false,
   webhookUrl: config.alerts?.webhookUrl || null,
+  telegramChatId: config.alerts?.telegramChatId || null,
   alertOnHighRisk: config.alerts?.onRiskLevels?.includes('high') ?? true,
   alertOnCategories: ['shell', 'file'],
   onRiskLevels: config.alerts?.onRiskLevels || ['high', 'critical'],
@@ -475,6 +476,7 @@ app.post('/api/config', (req, res) => {
       config.alerts = { ...config.alerts, ...updates.alerts };
       alertConfig.enabled = updates.alerts.enabled ?? alertConfig.enabled;
       alertConfig.webhookUrl = updates.alerts.webhookUrl ?? alertConfig.webhookUrl;
+      alertConfig.telegramChatId = updates.alerts.telegramChatId ?? alertConfig.telegramChatId;
       alertConfig.onRiskLevels = updates.alerts.onRiskLevels ?? alertConfig.onRiskLevels;
       alertConfig.onSequences = updates.alerts.onSequences ?? alertConfig.onSequences;
     }
@@ -1144,10 +1146,11 @@ app.get('/api/alerts/config', (req, res) => {
  */
 app.post('/api/alerts/config', express.json(), (req, res) => {
   try {
-    const { enabled, webhookUrl, alertOnHighRisk, alertOnCategories } = req.body;
+    const { enabled, webhookUrl, telegramChatId, alertOnHighRisk, alertOnCategories } = req.body;
     
     if (typeof enabled === 'boolean') alertConfig.enabled = enabled;
     if (webhookUrl !== undefined) alertConfig.webhookUrl = webhookUrl;
+    if (telegramChatId !== undefined) alertConfig.telegramChatId = telegramChatId;
     if (typeof alertOnHighRisk === 'boolean') alertConfig.alertOnHighRisk = alertOnHighRisk;
     if (Array.isArray(alertOnCategories)) alertConfig.alertOnCategories = alertOnCategories;
     
@@ -1511,9 +1514,14 @@ async function sendAlert(activity, risk) {
   let body;
   
   if (isTelegram) {
-    // Telegram requires 'text' field
+    // Telegram requires 'chat_id' and 'text' fields
+    if (!alertConfig.telegramChatId) {
+      console.error('Telegram alert skipped: telegramChatId not configured');
+      return;
+    }
     const message = `⚠️ ${risk.level.toUpperCase()} RISK: ${activity.tool}\n\nFlags: ${risk.flags.join(', ')}\nArgs: ${JSON.stringify(activity.arguments).substring(0, 100)}`;
     body = JSON.stringify({
+      chat_id: alertConfig.telegramChatId,
       text: message,
       parse_mode: 'Markdown'
     });
