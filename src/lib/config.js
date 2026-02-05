@@ -2,7 +2,7 @@
  * ClawGuard Configuration Manager
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
 import { fileURLToPath } from 'url';
@@ -36,7 +36,7 @@ function deepMerge(target, source) {
 }
 
 /**
- * Auto-detect Clawdbot/OpenClaw sessions path
+ * Auto-detect Clawdbot/OpenClaw sessions path (single path for backwards compat)
  */
 function detectSessionsPath() {
   const possiblePaths = [
@@ -56,6 +56,57 @@ function detectSessionsPath() {
 
   // Default fallback
   return possiblePaths[0];
+}
+
+/**
+ * Discover all agent session directories under a base path
+ * e.g., ~/.openclaw/agents/<name>/sessions/
+ */
+function discoverAgentPaths(basePath) {
+  const paths = [];
+  
+  try {
+    const expanded = basePath.startsWith('~') ? basePath.replace('~', homedir()) : basePath;
+    
+    // Check if it's an agents directory (contains subdirs with sessions/)
+    const entries = readdirSync(expanded, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const sessionsPath = join(expanded, entry.name, 'sessions');
+        if (existsSync(sessionsPath)) {
+          paths.push(sessionsPath);
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`Failed to discover agents in ${basePath}:`, error.message);
+  }
+  
+  return paths;
+}
+
+/**
+ * Auto-detect all agent session directories
+ */
+function detectAllSessionsPaths() {
+  const possibleBases = [
+    join(homedir(), '.openclaw', 'agents'),
+    join(homedir(), '.moltbot', 'agents'),
+    join(homedir(), '.clawdbot', 'agents'),
+  ];
+
+  for (const base of possibleBases) {
+    if (existsSync(base)) {
+      const paths = discoverAgentPaths(base);
+      if (paths.length > 0) {
+        return paths;
+      }
+    }
+  }
+
+  // Fallback to legacy single-path detection
+  return [detectSessionsPath()];
 }
 
 /**
@@ -144,15 +195,37 @@ export function loadConfig() {
     config = createDefaultConfig();
   }
 
-  // Resolve 'auto' sessions path
-  if (config.sessionsPath === 'auto') {
-    config.sessionsPath = detectSessionsPath();
+  // Build sessionsPaths array from various config options
+  let sessionsPaths = [];
+
+  // 1. If sessionsPaths array is explicitly set, use it
+  if (Array.isArray(config.sessionsPaths) && config.sessionsPaths.length > 0) {
+    sessionsPaths = config.sessionsPaths.map(p => 
+      p.startsWith('~') ? p.replace('~', homedir()) : p
+    );
+  }
+  // 2. If agentsBasePath is set, discover all agents under it
+  else if (config.agentsBasePath) {
+    const basePath = config.agentsBasePath.startsWith('~') 
+      ? config.agentsBasePath.replace('~', homedir()) 
+      : config.agentsBasePath;
+    sessionsPaths = discoverAgentPaths(basePath);
+  }
+  // 3. If sessionsPath is 'auto', detect all agents
+  else if (config.sessionsPath === 'auto') {
+    sessionsPaths = detectAllSessionsPaths();
+  }
+  // 4. Otherwise use the single sessionsPath
+  else {
+    const singlePath = config.sessionsPath.startsWith('~') 
+      ? config.sessionsPath.replace('~', homedir()) 
+      : config.sessionsPath;
+    sessionsPaths = [singlePath];
   }
 
-  // Expand ~ in paths
-  if (config.sessionsPath.startsWith('~')) {
-    config.sessionsPath = config.sessionsPath.replace('~', homedir());
-  }
+  // Keep sessionsPath for backwards compatibility (first path)
+  config.sessionsPath = sessionsPaths[0] || detectSessionsPath();
+  config.sessionsPaths = sessionsPaths;
 
   return {
     ...config,

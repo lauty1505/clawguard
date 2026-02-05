@@ -5,7 +5,7 @@ import { watch } from 'chokidar';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-import { clients, PORT, SESSIONS_DIR, config, alertConfig, streamingConfig } from './lib/state.js';
+import { clients, PORT, SESSIONS_DIR, SESSIONS_DIRS, config, alertConfig, streamingConfig } from './lib/state.js';
 import { pkg } from './lib/pkg.js';
 import { processNewLogEntries, startStreamingInterval } from './lib/streaming.js';
 
@@ -55,8 +55,8 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Watch for file changes and broadcast updates
-const watcher = watch(SESSIONS_DIR, {
+// Watch for file changes and broadcast updates (supports multiple directories)
+const watcher = watch(SESSIONS_DIRS, {
   ignoreInitial: true,
   persistent: true,
 });
@@ -86,7 +86,14 @@ server.listen(PORT, () => {
   console.log(`\n🛡️  ClawGuard v${pkg.version}`);
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   console.log(`🌐 Dashboard:  http://localhost:${PORT}`);
-  console.log(`📁 Sessions:   ${SESSIONS_DIR}`);
+  if (SESSIONS_DIRS.length === 1) {
+    console.log(`📁 Sessions:   ${SESSIONS_DIRS[0]}`);
+  } else {
+    console.log(`📁 Sessions:   ${SESSIONS_DIRS.length} directories`);
+    for (const dir of SESSIONS_DIRS) {
+      console.log(`   └─ ${dir}`);
+    }
+  }
   console.log(`📋 Config:     ${config._configPath}`);
   console.log(`🔔 Alerts:     ${alertConfig.enabled ? 'Enabled' : 'Disabled'}`);
   console.log(`📤 Streaming:  ${streamingConfig.enabled ? streamingConfig.endpoint : 'Disabled'}`);

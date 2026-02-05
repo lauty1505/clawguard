@@ -5,7 +5,7 @@
 import { Router } from 'express';
 import { getAllActivity } from '../lib/parser.js';
 import { analyzeRisk, categorize } from '../lib/risk-analyzer.js';
-import { SESSIONS_DIR } from '../lib/state.js';
+import { SESSIONS_DIRS } from '../lib/state.js';
 
 /**
  * Escape a value for safe CSV output.
@@ -23,7 +23,7 @@ const router = Router();
 
 router.get('/json', (req, res) => {
   try {
-    const activity = getAllActivity(SESSIONS_DIR, 10000);
+    const activity = getAllActivity(SESSIONS_DIRS, 10000);
     const analyzed = activity.map((a) => ({
       ...a,
       risk: analyzeRisk(a),
@@ -43,7 +43,7 @@ router.get('/json', (req, res) => {
 
 router.get('/csv', (req, res) => {
   try {
-    const activity = getAllActivity(SESSIONS_DIR, 10000);
+    const activity = getAllActivity(SESSIONS_DIRS, 10000);
     const headers = [
       'timestamp',
       'tool',

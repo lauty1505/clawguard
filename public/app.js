@@ -1186,6 +1186,7 @@ function createActivityElement(item) {
       <div class="flex-1 min-w-0" onclick="showDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})">
         <div class="flex items-center gap-2 mb-1 flex-wrap">
           <span class="font-medium text-white">${item.tool}</span>
+          ${item.agent ? `<span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">${escapeHtml(item.agent)}</span>` : ''}
           <span class="text-xs px-2 py-0.5 rounded-full border ${riskClass}">
             ${item.risk?.level || 'unknown'}
           </span>
@@ -1282,6 +1283,7 @@ window.showDetail = function(item) {
         <span class="text-white">${timestamp}</span>
         <span class="text-slate-400">Risk:</span>
         <span class="${riskColors[item.risk?.level] || ''} font-medium">${item.risk?.level || 'unknown'}</span>
+        ${item.agent ? `<span class="text-slate-400">Agent:</span><span class="text-purple-400 font-medium">${escapeHtml(item.agent)}</span>` : ''}
         <span class="text-slate-400">Session:</span>
         <span class="text-white font-mono text-xs">${item.sessionId?.substring(0, 8) || 'unknown'}...</span>
       </div>

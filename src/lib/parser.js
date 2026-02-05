@@ -27,31 +27,45 @@ export function getSessionsDir() {
 }
 
 /**
- * List all session files
+ * List all session files from one or more directories
+ * @param {string|string[]} sessionsDirs - Single path or array of paths
  */
-export function listSessions(sessionsDir = getSessionsDir()) {
-  try {
-    const files = readdirSync(sessionsDir)
-      .filter((f) => f.endsWith('.jsonl') && !f.includes('.deleted.'))
-      .map((f) => {
-        const filePath = join(sessionsDir, f);
-        const stats = statSync(filePath);
-        return {
-          id: basename(f, '.jsonl'),
-          filename: f,
-          path: filePath,
-          size: stats.size,
-          modified: stats.mtime,
-          created: stats.birthtime,
-        };
-      })
-      .sort((a, b) => b.modified - a.modified);
+export function listSessions(sessionsDirs = getSessionsDir()) {
+  // Normalize to array
+  const dirs = Array.isArray(sessionsDirs) ? sessionsDirs : [sessionsDirs];
+  const allFiles = [];
 
-    return files;
-  } catch (error) {
-    console.error('Error listing sessions:', error);
-    return [];
+  for (const sessionsDir of dirs) {
+    try {
+      // Extract agent name from path (e.g., ~/.openclaw/agents/main/sessions -> main)
+      const pathParts = sessionsDir.split('/');
+      const agentsIdx = pathParts.indexOf('agents');
+      const agentName = agentsIdx >= 0 && pathParts[agentsIdx + 1] ? pathParts[agentsIdx + 1] : null;
+
+      const files = readdirSync(sessionsDir)
+        .filter((f) => f.endsWith('.jsonl') && !f.includes('.deleted.'))
+        .map((f) => {
+          const filePath = join(sessionsDir, f);
+          const stats = statSync(filePath);
+          return {
+            id: basename(f, '.jsonl'),
+            filename: f,
+            path: filePath,
+            size: stats.size,
+            modified: stats.mtime,
+            created: stats.birthtime,
+            agent: agentName,
+            sessionsDir,
+          };
+        });
+      
+      allFiles.push(...files);
+    } catch (error) {
+      console.error(`Error listing sessions in ${sessionsDir}:`, error.message);
+    }
   }
+
+  return allFiles.sort((a, b) => b.modified - a.modified);
 }
 
 /**
@@ -184,16 +198,23 @@ function summarizeResult(content) {
 
 /**
  * Get all activity from all sessions
+ * @param {string|string[]} sessionsDirs - Single path or array of paths
+ * @param {number} limit - Maximum number of activities to return
  */
-export function getAllActivity(sessionsDir = getSessionsDir(), limit = 1000) {
-  const sessions = listSessions(sessionsDir);
+export function getAllActivity(sessionsDirs = getSessionsDir(), limit = 1000) {
+  const sessions = listSessions(sessionsDirs);
   const allActivity = [];
 
   for (const sessionInfo of sessions) {
     const session = parseSession(sessionInfo.path);
     if (session) {
       const activity = extractActivity(session);
-      allActivity.push(...activity);
+      // Add agent info to each activity
+      const enrichedActivity = activity.map(a => ({
+        ...a,
+        agent: sessionInfo.agent,
+      }));
+      allActivity.push(...enrichedActivity);
     }
 
     // Stop if we have enough

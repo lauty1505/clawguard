@@ -5,7 +5,7 @@
 import express, { Router } from 'express';
 import { listSessions, parseSession, extractActivity } from '../lib/parser.js';
 import { analyzeRisk, categorize } from '../lib/risk-analyzer.js';
-import { SESSIONS_DIR, streamingConfig } from '../lib/state.js';
+import { SESSIONS_DIRS, streamingConfig } from '../lib/state.js';
 import { resolveEndpoint } from '../lib/validate.js';
 
 const router = Router();
@@ -22,7 +22,7 @@ router.post('/session/:id', express.json(), async (req, res) => {
   const authHeader = req.body.authHeader || streamingConfig.authHeader;
 
   try {
-    const sessions = listSessions(SESSIONS_DIR);
+    const sessions = listSessions(SESSIONS_DIRS);
     const sessionInfo = sessions.find((s) => s.id === req.params.id);
     if (!sessionInfo) {
       return res.status(404).json({ error: 'Session not found' });
@@ -83,7 +83,7 @@ router.post('/all', express.json(), async (req, res) => {
   const authHeader = req.body.authHeader || streamingConfig.authHeader;
 
   try {
-    const sessions = listSessions(SESSIONS_DIR);
+    const sessions = listSessions(SESSIONS_DIRS);
     const headers = { 'Content-Type': 'application/json', 'User-Agent': 'ClawGuard/0.3.0' };
     if (authHeader) headers['Authorization'] = authHeader;
     const results = {
@@ -141,7 +141,7 @@ router.post('/all', express.json(), async (req, res) => {
 
 router.get('/preview', (req, res) => {
   try {
-    const sessions = listSessions(SESSIONS_DIR);
+    const sessions = listSessions(SESSIONS_DIRS);
     let totalActivity = 0;
     const sessionPreviews = sessions.map((sessionInfo) => {
       const session = parseSession(sessionInfo.path);

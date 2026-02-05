@@ -5,13 +5,13 @@
 import { Router } from 'express';
 import { listSessions, parseSession, extractActivity } from '../lib/parser.js';
 import { analyzeRisk, categorize, getCategoryIcon } from '../lib/risk-analyzer.js';
-import { SESSIONS_DIR } from '../lib/state.js';
+import { SESSIONS_DIRS } from '../lib/state.js';
 
 const router = Router();
 
 router.get('/', (req, res) => {
   try {
-    const sessions = listSessions(SESSIONS_DIR);
+    const sessions = listSessions(SESSIONS_DIRS);
     const enriched = sessions.map((s) => {
       const session = parseSession(s.path);
       const activity = session ? extractActivity(session) : [];
@@ -29,7 +29,7 @@ router.get('/', (req, res) => {
 
 router.get('/:id', (req, res) => {
   try {
-    const sessions = listSessions(SESSIONS_DIR);
+    const sessions = listSessions(SESSIONS_DIRS);
     const sessionInfo = sessions.find((s) => s.id === req.params.id);
     if (!sessionInfo) {
       return res.status(404).json({ error: 'Session not found' });

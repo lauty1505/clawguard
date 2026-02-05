@@ -22,7 +22,7 @@ import {
   isPersistencePath,
   getSummary,
 } from '../lib/sequence-helpers.js';
-import { SESSIONS_DIR, SEQUENCE_WINDOW_MS } from '../lib/state.js';
+import { SESSIONS_DIRS, SEQUENCE_WINDOW_MS } from '../lib/state.js';
 
 const router = Router();
 
@@ -37,7 +37,7 @@ router.get('/activity', (req, res) => {
     const dateFrom = req.query.dateFrom;
     const dateTo = req.query.dateTo;
 
-    let activity = getAllActivity(SESSIONS_DIR, 5000);
+    let activity = getAllActivity(SESSIONS_DIRS, 5000);
     activity = activity.map((a) => {
       const category = categorize(a.tool);
       return {
@@ -78,7 +78,7 @@ router.get('/activity', (req, res) => {
 
 router.get('/stats', (req, res) => {
   try {
-    const activity = getAllActivity(SESSIONS_DIR, 10000);
+    const activity = getAllActivity(SESSIONS_DIRS, 10000);
     const analyzed = activity.map((a) => ({
       ...a,
       risk: analyzeRisk(a),
@@ -144,7 +144,7 @@ router.get('/meta', (req, res) => {
 
 router.get('/sequences', (req, res) => {
   try {
-    const activity = getAllActivity(SESSIONS_DIR, 5000);
+    const activity = getAllActivity(SESSIONS_DIRS, 5000);
     const sorted = [...activity].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const sequences = [];
     const windowMs = SEQUENCE_WINDOW_MS;

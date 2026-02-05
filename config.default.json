@@ -2,6 +2,8 @@
   "$schema": "./config.schema.json",
   "port": 3847,
   "sessionsPath": "auto",
+  "sessionsPaths": null,
+  "agentsBasePath": null,
   "alerts": {
     "enabled": false,
     "webhookUrl": null,

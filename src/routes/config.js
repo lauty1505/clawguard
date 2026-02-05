@@ -14,6 +14,8 @@ router.get('/', (req, res) => {
     version: pkg.version,
     port: config.port,
     sessionsPath: config.sessionsPath,
+    sessionsPaths: config.sessionsPaths || [config.sessionsPath],
+    agentsBasePath: config.agentsBasePath || null,
     configPath: config._configPath,
     alerts: {
       enabled: alertConfig.enabled,
